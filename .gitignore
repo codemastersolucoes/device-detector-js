@@ -1,5 +1,7 @@
-node_modules
-php_modules
-.idea
-coverage
-benchmark.js
+.idea/*
+vendor/*
+composer.lock
+composer.phar
+.buildpath
+.project
+.settings

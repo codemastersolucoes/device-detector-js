@@ -1,107 +1,197 @@
-# device-detector-js
+DeviceDetector
+==============
 
-The Universal Device Detection library will parse any User Agent and detect the browser, operating system, device used (desktop, tablet, mobile, tv, cars, console, etc.), brand and model. Works with Node.js and in the browser.
+[![Latest Stable Version](https://poser.pugx.org/piwik/device-detector/v/stable)](https://packagist.org/packages/piwik/device-detector)
+[![Latest Unstable Version](https://poser.pugx.org/piwik/device-detector/v/unstable)](https://packagist.org/packages/piwik/device-detector)
+[![Total Downloads](https://poser.pugx.org/piwik/device-detector/downloads)](https://packagist.org/packages/piwik/device-detector)
+[![License](https://poser.pugx.org/piwik/device-detector/license)](https://packagist.org/packages/piwik/device-detector)
 
-#### This is a javascript port of Matomo [device-detector](https://github.com/etienne-martin/matomo-device-detector).
+## Code Status
 
-[![Coveralls github](https://img.shields.io/coveralls/github/etienne-martin/device-detector-js.svg)](https://coveralls.io/github/etienne-martin/device-detector-js)
-[![CircleCI build](https://img.shields.io/circleci/project/github/RedSparr0w/node-csgo-parser.svg)](https://circleci.com/gh/etienne-martin/device-detector-js)
-[![node version](https://img.shields.io/node/v/device-detector-js.svg)](https://www.npmjs.com/package/device-detector-js)
-[![npm version](https://img.shields.io/npm/v/device-detector-js.svg)](https://www.npmjs.com/package/device-detector-js)
-[![npm monthly downloads](https://img.shields.io/npm/dm/device-detector-js.svg)](https://www.npmjs.com/package/device-detector-js)
+[![Build Status](https://travis-ci.org/matomo-org/device-detector.svg?branch=master)](https://travis-ci.org/matomo-org/device-detector)
+[![Code Coverage](https://coveralls.io/repos/piwik/device-detector/badge.png)](https://coveralls.io/r/piwik/device-detector)
+[![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/matomo-org/device-detector.svg)](http://isitmaintained.com/project/matomo-org/device-detector "Average time to resolve an issue")
+[![Percentage of issues still open](http://isitmaintained.com/badge/open/matomo-org/device-detector.svg)](http://isitmaintained.com/project/matomo-org/device-detector "Percentage of issues still open")
 
-## Getting Started
+## Description
 
-### Installation
+The Universal Device Detection library that parses User Agents and detects devices (desktop, tablet, mobile, tv, cars, console, etc.), clients (browsers, feed readers, media players, PIMs, ...), operating systems, brands and models.
 
-To use device-detector-js in your project, run:
+## Usage
 
-```bash
-npm install device-detector-js
-```
+Using DeviceDetector with composer is quite easy. Just add piwik/device-detector to your projects requirements. And use some code like this one:
 
-### Usage
 
-**Example** - simple user agent detection:
+```php
+require_once 'vendor/autoload.php';
 
-```javascript
-const DeviceDetector = require("device-detector-js");
+use DeviceDetector\DeviceDetector;
+use DeviceDetector\Parser\Device\DeviceParserAbstract;
 
-const deviceDetector = new DeviceDetector();
-const userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.81 Safari/537.36";
-const device = deviceDetector.parse(userAgent);
+// OPTIONAL: Set version truncation to none, so full versions will be returned
+// By default only minor versions will be returned (e.g. X.Y)
+// for other options see VERSION_TRUNCATION_* constants in DeviceParserAbstract class
+DeviceParserAbstract::setVersionTruncation(DeviceParserAbstract::VERSION_TRUNCATION_NONE);
 
-console.log(device);
-```
+$userAgent = $_SERVER['HTTP_USER_AGENT']; // change this to the useragent you want to parse
 
-Output:
+$dd = new DeviceDetector($userAgent);
 
-```json
-{
-  "client": {
-    "type": "browser",
-    "name": "Chrome",
-    "version": "69.0",
-    "engine": "Blink",
-    "engineVersion": ""
-  },
-  "os": {
-    "name": "Mac",
-    "version": "10.13",
-    "platform": ""
-  },
-  "device": {
-    "type": "desktop",
-    "brand": "Apple",
-    "model": ""
-  },
-  "bot": null
+// OPTIONAL: Set caching method
+// By default static cache is used, which works best within one php process (memory array caching)
+// To cache across requests use caching in files or memcache
+// $dd->setCache(new Doctrine\Common\Cache\PhpFileCache('./tmp/'));
+
+// OPTIONAL: Set custom yaml parser
+// By default Spyc will be used for parsing yaml files. You can also use another yaml parser.
+// You may need to implement the Yaml Parser facade if you want to use another parser than Spyc or [Symfony](https://github.com/symfony/yaml)
+// $dd->setYamlParser(new DeviceDetector\Yaml\Symfony());
+
+// OPTIONAL: If called, getBot() will only return true if a bot was detected  (speeds up detection a bit)
+// $dd->discardBotInformation();
+
+// OPTIONAL: If called, bot detection will completely be skipped (bots will be detected as regular devices then)
+// $dd->skipBotDetection();
+
+$dd->parse();
+
+if ($dd->isBot()) {
+  // handle bots,spiders,crawlers,...
+  $botInfo = $dd->getBot();
+} else {
+  $clientInfo = $dd->getClient(); // holds information about browser, feed reader, media player, ...
+  $osInfo = $dd->getOs();
+  $device = $dd->getDeviceName();
+  $brand = $dd->getBrandName();
+  $model = $dd->getModel();
 }
 ```
 
-**Example** - bot detection:
+Instead of using the full power of DeviceDetector it might in some cases be better to use only specific parsers.
+If you aim to check if a given useragent is a bot and don't require any of the other information, you can directly use the bot parser.
 
-```javascript
-const BotDetector = require("device-detector-js/dist/parsers/bot");
+```php
+require_once 'vendor/autoload.php';
 
-const botDetector = new BotDetector();
-const userAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 6_0 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Version/6.0 Mobile/10A5376e Safari/8536.25 (compatible; Googlebot-Mobile/2.1; +http://www.google.com/bot.html)";
-const bot = botDetector.parse(userAgent);
+use DeviceDetector\Parser\Bot AS BotParser;
 
-if (bot) {
-  console.log(bot);
+$botParser = new BotParser();
+$botParser->setUserAgent($userAgent);
+
+// OPTIONAL: discard bot information. parse() will then return true instead of information
+$botParser->discardDetails();
+
+$result = $botParser->parse();
+
+if (!is_null($result)) {
+    // do not do anything if a bot is detected
+    return;
 }
+
+// handle non-bot requests
+
 ```
 
-Output:
+## Using without composer
 
-```json
-{
-  "name": "Googlebot",
-  "category": "Search bot",
-  "url": "http://www.google.com/bot.html",
-  "producer": {
-    "name": "Google Inc.",
-    "url": "http://www.google.com"
-  }
-}
+Alternatively to using composer you can also use the included `autoload.php`.
+This script will register an autoloader to dynamically load all classes in `DeviceDetector` namespace.
+
+Device Detector requires a YAML parser. By default `Spyc` parser is used.
+As this library is not included you need to include it manually or use another YAML parser.
+
+```php
+<?php
+
+include_once 'path/to/spyc/Spyc.php';
+include_once 'path/to/device-detector/autoload.php';
+
+use DeviceDetector\DeviceDetector;
+
+$deviceDetector = new DeviceDetector();
+
+// ...
+
 ```
 
-## API Documentation
 
-#### new DeviceDetector([options])
+### Caching
 
-- `options` <[Object]> Options object which might have the following properties:
-  - `skipBotDetection` <[boolean]> If true, bot detection will completely be skipped (bots will be detected as regular devices). Defaults to `false`.
-  - `versionTruncation` <[0 | 1 | 2 | 3 | null]> Passing `null` disables version truncation, so full versions will be returned. Defaults to `1`, only minor versions will be returned (e.g. X.Y).
-  - `cache` <[boolean | number]> TTL of the cache (in seconds). Node.js only, will be automatically set to `false` if used in the browser. Defaults to `true` (no expiry).
-  
-#### new BotDetector([options])
+By default, DeviceDetector uses a built-in array cache. To get better performance, you can use your own caching solution:
 
-- `options` <[Object]> Options object which might have the following property:
-  - `cache` <[boolean | number]> TTL of the cache (in seconds). Node.js only, will be automatically set to `false` if used in the browser. Defaults to `true` (no expiry).
-  
-## What device-detector-js is able to detect
+* You can create a class that implement `DeviceDetector\Cache\Cache`
+* You can directly use a Doctrine Cache object (useful if your project already uses Doctrine)
+* Or if your project uses a [PSR-6](http://www.php-fig.org/psr/psr-6/) or [PSR-16](http://www.php-fig.org/psr/psr-16/) compliant caching system (like [symfony/cache](https://github.com/symfony/cache) or [matthiasmullie/scrapbook](https://github.com/matthiasmullie/scrapbook)), you can inject them the following way:
+
+```php
+// Example with PSR-6 and Symfony
+$cache = new Symfony\Component\Cache\Adapter\ApcuAdapter();
+$dd->setCache(
+    new DeviceDetector\Cache\PSR6Bridge($cache)
+);
+
+// Example with PSR-16 and ScrapBook
+$cache = new \MatthiasMullie\Scrapbook\Psr16\SimpleCache(
+    new \MatthiasMullie\Scrapbook\Adapters\Apc()
+);
+$dd->setCache(
+    new DeviceDetector\Cache\PSR16Bridge($cache)
+);
+
+// Example with Doctrine
+$dd->setCache(
+    new Doctrine\Common\Cache\ApcuCache()
+);
+```
+
+## Contributing
+
+### Hacking the library
+
+This is a free/libre library under license LGPL v3 or later.
+
+Your pull requests and/or feedback is very welcome!
+
+### Listing all user agents from your logs
+Sometimes it may be useful to generate the list of most used user agents on your website,
+extracting this list from your access logs using the following command:
+
+```
+zcat ~/path/to/access/logs* | awk -F'"' '{print $6}' | sort | uniq -c | sort -rn | head -n20000 > /home/matomo/top-user-agents.txt
+```
+
+### Contributors
+Created by the [Matomo team](http://matomo.org/team/), Stefan Giehl, Matthieu Aubry, Michał Gaździk,
+Tomasz Majczak, Grzegorz Kaszuba, Piotr Banaszczyk and contributors.
+
+Together we can build the best Device Detection library.
+
+We are looking forward to your contributions and pull requests!
+
+## Tests
+
+See also: [QA at Matomo](http://matomo.org/qa/)
+
+### Running tests
+
+```
+cd /path/to/device-detector
+curl -sS https://getcomposer.org/installer | php
+php composer.phar install
+./vendor/bin/phpunit
+```
+
+## Device Detector for other languages
+
+There are already a few ports of this tool to other languages:
+
+- **.NET** https://github.com/totpero/DeviceDetector.NET
+- **Ruby** https://github.com/podigee/device_detector
+- **Node.js** https://github.com/etienne-martin/device-detector-js
+- **Python 3** https://github.com/thinkwelltwd/device_detector
+
+
+## What Device Detector is able to detect
 
 The lists below are auto generated and updated from time to time. Some of them might not be complete.
 
@@ -146,27 +236,3 @@ Akregator, Apple PubSub, BashPodder, Downcast, FeedDemon, Feeddler RSS Reader, g
 ### List of detected bots:
 
 360Spider, Aboundexbot, Acoon, AddThis.com, ADMantX, aHrefs Bot, Alexa Crawler, Alexa Site Audit, Amorank Spider, Analytics SEO Crawler, ApacheBench, Applebot, archive.org bot, Ask Jeeves, Backlink-Check.de, BacklinkCrawler, Baidu Spider, BazQux Reader, BingBot, BitlyBot, Blekkobot, BLEXBot Crawler, Bloglovin, Blogtrottr, Bountii Bot, Browsershots, BUbiNG, Butterfly Robot, CareerBot, Castro 2, Catchpoint, ccBot crawler, Charlotte, Cliqzbot, CloudFlare Always Online, CloudFlare AMP Fetcher, Collectd, CommaFeed, CSS Certificate Spider, Cốc Cốc Bot, Datadog Agent, Dataprovider, Daum, Dazoobot, Discobot, Domain Re-Animator Bot, DotBot, DuckDuckGo Bot, Easou Spider, EMail Exractor, EmailWolf, evc-batch, ExaBot, ExactSeek Crawler, Ezooms, Facebook External Hit, Feedbin, FeedBurner, Feedly, Feedspot, Feed Wrangler, Fever, Findxbot, Flipboard, Generic Bot, Generic Bot, Genieo Web filter, Gigablast, Gigabot, Gluten Free Crawler, Gmail Image Proxy, Goo, Googlebot, Google PageSpeed Insights, Google Partner Monitoring, Google Structured Data Testing Tool, Grapeshot, Heritrix, Heureka Feed, HTTPMon, HubPages, HubSpot, ICC-Crawler, ichiro, IIS Site Analysis, Inktomi Slurp, IP-Guide Crawler, IPS Agent, Kouio, Larbin web crawler, Let's Encrypt Validation, Lighthouse, Linkdex Bot, LinkedIn Bot, LTX71, Lycos, Magpie-Crawler, MagpieRSS, Mail.Ru Bot, masscan, Meanpath Bot, MetaInspector, MetaJobBot, Mixrank Bot, MJ12 Bot, Mnogosearch, MojeekBot, Monitor.Us, Munin, Nagios check_http, NalezenCzBot, Netcraft Survey Bot, netEstate, NetLyzer FastProbe, NetResearchServer, Netvibes, NewsBlur, NewsGator, NLCrawler, Nmap, Nutch-based Bot, Octopus, Omgili bot, Openindex Spider, OpenLinkProfiler, OpenWebSpider, Orange Bot, Outbrain, PagePeeker, PaperLiBot, Phantomas, PHP Server Monitor, Picsearch bot, Pingdom Bot, Pinterest, PocketParser, Pompos, PritTorrent, QuerySeekerSpider, Quora Link Preview, Qwantify, Rainmeter, RamblerMail Image Proxy, Reddit Bot, Riddler, Rogerbot, ROI Hunter, SafeDNSBot, Scooter, ScoutJet, Scrapy, Screaming Frog SEO Spider, ScreenerBot, Semrush Bot, Sensika Bot, Sentry Bot, SEOENGBot, SEOkicks-Robot, Seoscanners.net, Server Density, Seznam Bot, Seznam Email Proxy, Seznam Zbozi.cz, ShopAlike, ShopWiki, SilverReader, SimplePie, SISTRIX Crawler, Site24x7 Website Monitoring, SiteSucker, Sixy.ch, Skype URI Preview, Slackbot, Sogou Spider, Soso Spider, Sparkler, Speedy, Spinn3r, Sputnik Bot, sqlmap, SSL Labs, StatusCake, Superfeedr Bot, Survey Bot, Tarmot Gezgin, TelgramBot, TinEye Crawler, Tiny Tiny RSS, TLSProbe, Trendiction Bot, TurnitinBot, TweetedTimes Bot, Tweetmeme Bot, Twitterbot, UkrNet Mail Proxy, UniversalFeedParser, Uptimebot, Uptime Robot, URLAppendBot, Vagabondo, Visual Site Mapper Crawler, VK Share Button, W3C CSS Validator, W3C I18N Checker, W3C Link Checker, W3C Markup Validation Service, W3C MobileOK Checker, W3C Unified Validator, Wappalyzer, WebbCrawler, WebPageTest, WebSitePulse, WebThumbnail, WeSEE:Search, Willow Internet Crawler, WordPress, Wotbox, YaCy, Yahoo! Cache System, Yahoo! Link Preview, Yahoo! Slurp, Yahoo Gemini, Yandex Bot, Yeti/Naverbot, Yottaa Site Monitor, Youdao Bot, Yourls, Yunyun Bot, Zao, zgrab, Zookabot, ZumBot
-
-## Built with
-
-* [Matomo device detector](https://github.com/etienne-martin/matomo-device-detector) - A powerful device detection library.
-* [node.js](https://nodejs.org/en/) - Cross-platform JavaScript run-time environment for executing JavaScript code server-side. 
-* [TypeScript](https://www.typescriptlang.org/) - Typed superset of JavaScript that compiles to plain JavaScript.
-* [Jest](https://facebook.github.io/jest/) - Delightful JavaScript Testing.
-
-## Contributing
-
-When contributing to this project, please first discuss the change you wish to make via issue, email, or any other method with the owners of this repository before making a change.
-
-Update the [README.md](https://github.com/etienne-martin/device-detector-js/blob/master/README.md) with details of changes to the library.
-
-Execute `npm run test` and update the [tests](https://github.com/etienne-martin/device-detector-js/tree/master/src/tests) if needed.
-
-## Authors
-
-* **Etienne Martin** - *Initial work* - [etiennemartin.ca](http://etiennemartin.ca/)
-* **Alex Beauchemin** - *Contributor* - [linkedin.com/in/alexbeauchemin](https://www.linkedin.com/in/alexbeauchemin/)
-
-## License
-
-This is a free/libre library under license LGPL v3 or later.
